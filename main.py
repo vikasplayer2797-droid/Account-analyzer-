@@ -40,32 +40,39 @@ async def analyze_statement(file: UploadFile = File(...)):
         
         if GEMINI_API_KEY and data:
             try:
-                # 🚀 SMART SWITCHER: पहले सबसे तगड़ा मॉडल ट्राई करेगा
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                prompt = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
-                Provide exact details for these 4 points:
-                1. 💰 टर्नओवर (Turnover): Total estimated yearly/monthly credit flow.
-                2. 🏦 चल रहे लोन (Active Loans & EMIs): List the exact names of companies cutting EMIs and the EMI amount.
-                3. ❌ बाउंस और पेनल्टी (Bounces & Late Fees): Find any bounced EMIs, ECS Returns, or late payment charges.
-                4. 📊 फाइनेंशियल स्कोर (Health Score): Give a score out of 10 based on repayment behavior.
-                
-                Bank Statement Data:
-                {str(data)[:30000]}"""
-                
-                response = model.generate_content(prompt)
-                ai_summary = response.text
-                
-            except Exception as e:
-                if "404" in str(e) or "400" in str(e):
-                    # 🚀 अगर वो फेल हुआ, तो यूनिवर्सल मॉडल (gemini-pro) यूज़ करेगा
-                    try:
-                        backup_model = genai.GenerativeModel('gemini-pro')
-                        response = backup_model.generate_content(prompt)
-                        ai_summary = response.text
-                    except Exception as backup_e:
-                        ai_summary = f"AI Error: {str(backup_e)}"
+                # 🚀 THE GOD MODE FIX: AUTO-DETECT WORKING MODEL
+                available_models = []
+                for m in genai.list_models():
+                    if 'generateContent' in m.supported_generation_methods:
+                        available_models.append(m.name)
+                        
+                if not available_models:
+                    ai_summary = "AI Error: No working models found on this API Key."
                 else:
-                    ai_summary = f"AI Error: {str(e)}"
+                    # जो भी सबसे बढ़िया मॉडल मिलेगा, कोड उसे खुद चुन लेगा
+                    target_model = available_models[0]
+                    for m in available_models:
+                        if 'flash' in m.lower():
+                            target_model = m
+                            break
+                    
+                    model = genai.GenerativeModel(target_model)
+                    
+                    prompt = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
+                    Provide exact details for these 4 points:
+                    1. 💰 टर्नओवर (Turnover): Total estimated yearly/monthly credit flow.
+                    2. 🏦 चल रहे लोन (Active Loans & EMIs): List the exact names of companies cutting EMIs and the EMI amount.
+                    3. ❌ बाउंस और पेनल्टी (Bounces & Late Fees): Find any bounced EMIs, ECS Returns, or late payment charges.
+                    4. 📊 फाइनेंशियल स्कोर (Health Score): Give a score out of 10 based on repayment behavior.
+                    
+                    Bank Statement Data:
+                    {str(data)[:30000]}"""
+                    
+                    response = model.generate_content(prompt)
+                    ai_summary = response.text
+                    
+            except Exception as e:
+                ai_summary = f"AI Error: {str(e)}"
 
         if MONGO_URI and data:
             collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
