@@ -41,8 +41,8 @@ async def analyze_statement(file: UploadFile = File(...)):
         if GEMINI_API_KEY and data:
             try:
                 # 🚀 FIX: Universal Model 'gemini-pro' जो कभी फेल नहीं होता
-                model = genai.GenerativeModel('gemini-3.5 flash-lite')
-                
+                model = genai.GenerativeModel('gemini-pro')
+             
                 prompt = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
                 Provide exact details for these 4 points:
                 1. 💰 टर्नओवर (Turnover): Total estimated yearly/monthly credit flow.
