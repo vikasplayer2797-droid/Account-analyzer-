@@ -42,7 +42,7 @@ async def analyze_statement(file: UploadFile = File(...)):
             
             prompt_text = f"""You are an elite Underwriting System. Analyze this bank statement and extract deep financial insights. 
             Rules:
-            1. Output ONLY a valid JSON object. Do not output anything else.
+            1. Output ONLY a RAW, valid JSON object. Do not output anything else.
             2. If any data is missing, output "N/A" or 0.
             
             Extract and return exactly this JSON structure:
@@ -84,7 +84,12 @@ async def analyze_statement(file: UploadFile = File(...)):
             Bank Statement Data:
             {str(data)[:25000]}"""
 
-            models_to_try = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile"]
+            # 🚀 THE HEAVY DUTY 32K MODEL (ये मेमोरी फुल होने से नहीं रुकेगा)
+            models_to_try = [
+                "mixtral-8x7b-32768",
+                "llama-3.3-70b-versatile",
+                "llama-3.1-8b-instant"
+            ]
             
             headers = {
                 'Authorization': f'Bearer {GROQ_API_KEY}',
@@ -99,15 +104,21 @@ async def analyze_statement(file: UploadFile = File(...)):
                     "model": model_name,
                     "messages": [{"role": "user", "content": prompt_text}],
                     "temperature": 0.0,
-                    "max_tokens": 4000, # 🚀 AI की साँस बढ़ा दी
-                    "response_format": {"type": "json_object"} # 🚀 THE MAGIC BULLET (सिर्फ JSON ही निकलेगा)
+                    "response_format": {"type": "json_object"}
                 }
                 try:
                     response = requests.post(url, headers=headers, json=payload)
                     res_json = response.json()
                     
                     if "choices" in res_json:
-                        ai_summary = res_json["choices"][0]["message"]["content"].strip()
+                        raw_text = res_json["choices"][0]["message"]["content"].strip()
+                        # 🚀 Sniper cut for extreme safety
+                        start_idx = raw_text.find('{')
+                        end_idx = raw_text.rfind('}')
+                        if start_idx != -1 and end_idx != -1:
+                            ai_summary = raw_text[start_idx:end_idx+1]
+                        else:
+                            ai_summary = raw_text
                         success = True
                         break
                     else:
@@ -117,7 +128,7 @@ async def analyze_statement(file: UploadFile = File(...)):
                     continue
             
             if not success:
-                return {"status": 500, "error": f"API Failed: {last_error}", "message": "API Error"}
+                return {"status": 500, "error": f"API Rejected: {last_error}", "message": "API Error"}
 
         if MONGO_URI and data:
             collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
