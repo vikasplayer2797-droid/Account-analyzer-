@@ -31,10 +31,8 @@ async def analyze_statement(file: UploadFile = File(...)):
         with open("temp.pdf", "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # यहाँ पूरा 100% डेटा आ जाएगा
         data = extract_transactions("temp.pdf")
         
-        # अगर पासबुक या फोटो है तो रोक दो
         if isinstance(data, str) and data.startswith("Error"):
             return {"status": 400, "message": data}
 
@@ -42,11 +40,10 @@ async def analyze_statement(file: UploadFile = File(...)):
         
         if GEMINI_API_KEY and data:
             try:
-                # Gemini 1.5 Flash बहुत फ़ास्ट है और बड़ा डेटा पढ़ सकता है
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # 🚀 FIX: Universal Model 'gemini-pro' जो कभी फेल नहीं होता
+                model = genai.GenerativeModel('gemini-pro')
                 
-                # 🚀 तेरा असली जासूसी प्रॉम्प्ट!
-                prompt = f"""You are an expert Financial Analyst. Read this entire bank statement text and give a strict report in Hindi/English mix.
+                prompt = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
                 Provide exact details for these 4 points:
                 1. 💰 टर्नओवर (Turnover): Total estimated yearly/monthly credit flow.
                 2. 🏦 चल रहे लोन (Active Loans & EMIs): List the exact names of companies cutting EMIs and the EMI amount.
@@ -54,7 +51,7 @@ async def analyze_statement(file: UploadFile = File(...)):
                 4. 📊 फाइनेंशियल स्कोर (Health Score): Give a score out of 10 based on repayment behavior.
                 
                 Bank Statement Data:
-                {data}"""
+                {str(data)[:30000]}""" # 🚀 Limit set to avoid any overload
                 
                 response = model.generate_content(prompt)
                 ai_summary = response.text
@@ -62,7 +59,7 @@ async def analyze_statement(file: UploadFile = File(...)):
                 ai_summary = f"AI Analysis Error: {str(e)}"
 
         if MONGO_URI and data:
-            collection.insert_one({"filename": file.filename, "extracted_text_length": len(data), "ai_summary": ai_summary})
+            collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
             
         return {"status": 200, "message": "Success", "ai_summary": ai_summary}
     
