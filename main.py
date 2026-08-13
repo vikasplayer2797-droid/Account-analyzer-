@@ -17,7 +17,6 @@ if MONGO_URI:
     client = MongoClient(MONGO_URI)
     collection = client["financial_db"]["statements"]
 
-# 🚀 अब हम Groq AI इस्तेमाल कर रहे हैं
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 @app.get("/", response_class=HTMLResponse)
@@ -39,7 +38,6 @@ async def analyze_statement(file: UploadFile = File(...)):
         ai_summary = "AI Summary unavailable."
         
         if GROQ_API_KEY and data:
-            # 🚀 GROQ Llama-3 API CALL
             url = "https://api.groq.com/openai/v1/chat/completions"
             
             prompt_text = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
@@ -52,26 +50,43 @@ async def analyze_statement(file: UploadFile = File(...)):
             Bank Statement Data:
             {str(data)[:20000]}"""
 
-            payload = {
-                "model": "llama3-70b-8192",  # दुनिया के सबसे स्मार्ट मॉडल्स में से एक
-                "messages": [{"role": "user", "content": prompt_text}]
-            }
+            # 🚀 TERMINATOR LOOP FOR GROQ (4 लेटेस्ट और सबसे फ़ास्ट मॉडल्स)
+            models_to_try = [
+                "llama-3.3-70b-versatile",
+                "llama-3.1-70b-versatile", 
+                "llama-3.1-8b-instant",
+                "mixtral-8x7b-32768"
+            ]
             
             headers = {
                 'Authorization': f'Bearer {GROQ_API_KEY}',
                 'Content-Type': 'application/json'
             }
             
-            try:
-                response = requests.post(url, headers=headers, json=payload)
-                res_json = response.json()
-                
-                if "choices" in res_json:
-                    ai_summary = res_json["choices"][0]["message"]["content"]
-                else:
-                    ai_summary = f"API Error: {json.dumps(res_json)}"
-            except Exception as e:
-                ai_summary = f"Request Failed: {str(e)}"
+            success = False
+            last_error = ""
+            
+            for model_name in models_to_try:
+                payload = {
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt_text}]
+                }
+                try:
+                    response = requests.post(url, headers=headers, json=payload)
+                    res_json = response.json()
+                    
+                    if "choices" in res_json:
+                        ai_summary = res_json["choices"][0]["message"]["content"]
+                        success = True
+                        break  # 🚀 मॉडल चल गया, लूप रोक दो!
+                    else:
+                        last_error = json.dumps(res_json)
+                except Exception as e:
+                    last_error = str(e)
+                    continue
+            
+            if not success:
+                ai_summary = f"API Error: 4 मॉडल्स ट्राई किए, सब फेल! Last Error: {last_error}"
 
         if MONGO_URI and data:
             collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
