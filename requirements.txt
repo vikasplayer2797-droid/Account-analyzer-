@@ -3,3 +3,9 @@ uvicorn
 pdfplumber
 pymongo
 python-multipart
+fastapi
+uvicorn
+pdfplumber
+pymongo
+python-multipart
+google-generativeai
