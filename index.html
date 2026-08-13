@@ -3,55 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Statement Analyzer</title>
+    <!-- Tailwind CSS for Professional UI -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <title>AI Financial Analyzer</title>
 </head>
-<body class="bg-gradient-to-r from-blue-50 to-blue-100 flex items-center justify-center h-screen">
-    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
-        <div class="text-4xl mb-4">📊</div>
-        <h1 class="text-2xl font-bold mb-2 text-gray-800">AI Financial Analyzer</h1>
-        <p class="text-gray-500 mb-6 text-sm">Upload Bank Statement (PDF) for instant AI review</p>
+<body class="bg-slate-50 p-4 md:p-8 font-sans">
+    <div class="max-w-5xl mx-auto">
+        <!-- Upload Section -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8 text-center">
+            <h1 class="text-3xl font-extrabold text-slate-800">Financial Analyzer</h1>
+            <p class="text-slate-500 mt-2">Upload Bank Statement for Instant Review</p>
+            
+            <div class="mt-8 flex flex-col items-center justify-center">
+                <input type="file" id="pdfFile" class="block w-full max-w-md text-sm text-slate-500 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition" accept=".pdf" />
+            </div>
+            
+            <button id="analyzeBtn" onclick="uploadFile()" class="mt-6 w-full max-w-md bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl transition duration-300 shadow-md">
+                Generate Report
+            </button>
+            <p id="loadingText" class="text-blue-600 font-semibold mt-4 hidden animate-pulse">Processing Statement... Please wait ⏳</p>
+        </div>
+
+        <!-- Professional Dashboard (Hidden by default) -->
+        <div id="dashboard" class="hidden">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6 border-b pb-2">Financial Report</h2>
+            
+            <!-- Metric Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-green-500">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Credits</h3>
+                    <p id="totalCredits" class="text-2xl font-black text-slate-800 mt-2">₹0</p>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-red-500">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Debits</h3>
+                    <p id="totalDebits" class="text-2xl font-black text-slate-800 mt-2">₹0</p>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-blue-500">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Active Loans Count</h3>
+                    <p id="activeLoans" class="text-2xl font-black text-slate-800 mt-2">0</p>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-purple-500">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">EMI Transactions Count</h3>
+                    <p id="emiCount" class="text-2xl font-black text-slate-800 mt-2">0</p>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-orange-500">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Bounces & Late Fees</h3>
+                    <p id="bounces" class="text-2xl font-black text-slate-800 mt-2">0</p>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-indigo-500">
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Health Score</h3>
+                    <p id="healthScore" class="text-2xl font-black text-slate-800 mt-2">0/10</p>
+                </div>
+
+            </div>
+
+            <!-- Summary Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-slate-800">
+                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Executive Summary</h3>
+                <p id="summaryText" class="text-slate-700 mt-3 font-medium leading-relaxed"></p>
+            </div>
+        </div>
         
-        <input type="file" id="fileInput" class="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-        
-        <button onclick="uploadFile()" id="btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl w-full transition-all shadow-lg">
-            Analyze Statement 🚀
-        </button>
-        
-        <div id="result" class="mt-6 text-left p-4 bg-gray-50 rounded-xl text-sm text-gray-700 hidden border border-gray-200 shadow-inner">
+        <!-- Error Box -->
+        <div id="errorBox" class="hidden mt-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm">
+            <span id="errorText" class="block font-medium"></span>
         </div>
     </div>
 
     <script>
         async function uploadFile() {
-            const file = document.getElementById('fileInput').files[0];
-            if(!file) return alert("Bhai, pehle PDF toh select kar! 😅");
+            const fileInput = document.getElementById('pdfFile');
+            const btn = document.getElementById('analyzeBtn');
+            const loadingText = document.getElementById('loadingText');
+            const dashboard = document.getElementById('dashboard');
+            const errorBox = document.getElementById('errorBox');
             
-            const btn = document.getElementById('btn');
-            const resultDiv = document.getElementById('result');
-            
-            btn.innerText = "Analyzing... Please wait ⏳";
-            btn.disabled = true;
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = `<span class="animate-pulse">AI is reading the statement... 🧠</span>`;
-            
-            const formData = new FormData();
-            formData.append("file", file);
-            
-            try {
-                const res = await fetch("/analyze", { method: "POST", body: formData });
-                const data = await res.json();
-                
-                if(data.ai_summary) {
-                    resultDiv.innerHTML = `<h3 class="font-bold text-blue-600 mb-2">🤖 AI Report:</h3><p class="whitespace-pre-line">${data.ai_summary}</p>`;
-                } else {
-                    resultDiv.innerHTML = `<span class="text-red-500">${data.message || data.error}</span>`;
-                }
-            } catch(e) {
-                resultDiv.innerHTML = `<span class="text-red-500">Server Error!</span>`;
+            if (fileInput.files.length === 0) {
+                alert("Please select a statement first.");
+                return;
             }
-            btn.innerText = "Analyze Statement 🚀";
-            btn.disabled = false;
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            btn.classList.add('hidden');
+            loadingText.classList.remove('hidden');
+            dashboard.classList.add('hidden');
+            errorBox.classList.add('hidden');
+
+            try {
+                // Call Backend
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.status === 200) {
+                    try {
+                        // Parse strict JSON from backend
+                        const data = JSON.parse(result.ai_summary);
+                        
+                        document.getElementById('totalCredits').innerText = data.total_credits;
+                        document.getElementById('totalDebits').innerText = data.total_debits;
+                        document.getElementById('activeLoans').innerText = data.active_loans_count;
+                        document.getElementById('emiCount').innerText = data.emi_transactions_count;
+                        document.getElementById('bounces').innerText = data.bounces_and_late_fees;
+                        document.getElementById('healthScore').innerText = data.health_score;
+                        document.getElementById('summaryText').innerText = data.summary;
+                        
+                        dashboard.classList.remove('hidden');
+                    } catch (e) {
+                        document.getElementById('errorText').innerText = "Data parsing error. Ensure the document is a valid statement.";
+                        errorBox.classList.remove('hidden');
+                    }
+                } else {
+                    document.getElementById('errorText').innerText = result.message || result.error;
+                    errorBox.classList.remove('hidden');
+                }
+            } catch (error) {
+                document.getElementById('errorText').innerText = "Server connection failed. Please try again.";
+                errorBox.classList.remove('hidden');
+            } finally {
+                btn.classList.remove('hidden');
+                loadingText.classList.add('hidden');
+            }
         }
     </script>
 </body>
