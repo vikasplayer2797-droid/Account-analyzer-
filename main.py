@@ -42,9 +42,8 @@ async def analyze_statement(file: UploadFile = File(...)):
             
             prompt_text = f"""You are an elite Underwriting System. Analyze this bank statement and extract deep financial insights. 
             Rules:
-            1. DO NOT output any text, stories, or markdown. Output ONLY a RAW, valid JSON object.
+            1. Output ONLY a valid JSON object. Do not output anything else.
             2. If any data is missing, output "N/A" or 0.
-            3. DO NOT use the word 'AI'. Ensure perfect English.
             
             Extract and return exactly this JSON structure:
             {{
@@ -85,10 +84,7 @@ async def analyze_statement(file: UploadFile = File(...)):
             Bank Statement Data:
             {str(data)[:25000]}"""
 
-            models_to_try = [
-                "llama-3.3-70b-versatile",
-                "llama-3.1-70b-versatile"
-            ]
+            models_to_try = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile"]
             
             headers = {
                 'Authorization': f'Bearer {GROQ_API_KEY}',
@@ -96,33 +92,32 @@ async def analyze_statement(file: UploadFile = File(...)):
             }
             
             success = False
+            last_error = ""
+            
             for model_name in models_to_try:
                 payload = {
                     "model": model_name,
                     "messages": [{"role": "user", "content": prompt_text}],
-                    "temperature": 0.0 # Strict precise output
+                    "temperature": 0.0,
+                    "max_tokens": 4000, # 🚀 AI की साँस बढ़ा दी
+                    "response_format": {"type": "json_object"} # 🚀 THE MAGIC BULLET (सिर्फ JSON ही निकलेगा)
                 }
                 try:
                     response = requests.post(url, headers=headers, json=payload)
                     res_json = response.json()
                     
                     if "choices" in res_json:
-                        raw_text = res_json["choices"][0]["message"]["content"]
-                        
-                        # 🚀 THE SNIPER CUT: सिर्फ { और } के बीच का डेटा निकालेगा, फालतू टेक्स्ट इग्नोर!
-                        start_idx = raw_text.find('{')
-                        end_idx = raw_text.rfind('}')
-                        
-                        if start_idx != -1 and end_idx != -1:
-                            cleaned_json = raw_text[start_idx:end_idx+1]
-                            ai_summary = cleaned_json
-                            success = True
-                            break
+                        ai_summary = res_json["choices"][0]["message"]["content"].strip()
+                        success = True
+                        break
+                    else:
+                        last_error = json.dumps(res_json)
                 except Exception as e:
+                    last_error = str(e)
                     continue
             
             if not success:
-                ai_summary = '{"error": "Failed to analyze document"}'
+                return {"status": 500, "error": f"API Failed: {last_error}", "message": "API Error"}
 
         if MONGO_URI and data:
             collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
