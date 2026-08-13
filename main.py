@@ -3,8 +3,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
+import requests
+import json
 from pymongo import MongoClient
-import google.generativeai as genai
 from parser import extract_transactions
 
 app = FastAPI()
@@ -17,8 +18,6 @@ if MONGO_URI:
     collection = client["financial_db"]["statements"]
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_ui():
@@ -39,16 +38,10 @@ async def analyze_statement(file: UploadFile = File(...)):
         ai_summary = "AI Summary unavailable."
         
         if GEMINI_API_KEY and data:
-            # 🚀 THE TERMINATOR PROTOCOL: 5 मॉडल्स की लिस्ट, कोई तो चलेगा!
-            models_to_try = [
-                'gemini-1.5-flash',
-                'gemini-1.5-flash-latest',
-                'gemini-1.5-pro',
-                'gemini-pro',
-                'gemini-1.0-pro'
-            ]
+            # 🚀 DIRECT REST API CALL (बिना किसी लाइब्रेरी के झंझट के सीधा कनेक्शन)
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
             
-            prompt = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
+            prompt_text = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
             Provide exact details for these 4 points:
             1. 💰 टर्नओवर (Turnover): Total estimated yearly/monthly credit flow.
             2. 🏦 चल रहे लोन (Active Loans & EMIs): List the exact names of companies cutting EMIs and the EMI amount.
@@ -56,22 +49,26 @@ async def analyze_statement(file: UploadFile = File(...)):
             4. 📊 फाइनेंशियल स्कोर (Health Score): Give a score out of 10 based on repayment behavior.
             
             Bank Statement Data:
-            {str(data)[:30000]}"""
+            {str(data)[:25000]}"""
+
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt_text}]
+                }]
+            }
             
-            success = False
-            for model_name in models_to_try:
-                try:
-                    model = genai.GenerativeModel(model_name)
-                    response = model.generate_content(prompt)
-                    ai_summary = response.text
-                    success = True
-                    break  # 🚀 जैसे ही एक मॉडल चला, लूप रोक दो!
-                except Exception as e:
-                    print(f"Failed with {model_name}: {str(e)}")
-                    continue  # 🚀 अगर फेल हुआ, तो अगला मॉडल ट्राई करो
+            headers = {'Content-Type': 'application/json'}
             
-            if not success:
-                ai_summary = "AI Error: 5 मॉडल्स ट्राई किए, लेकिन Google API ने रिजेक्ट कर दिया। कृपया अपनी API Key चेक करें।"
+            try:
+                response = requests.post(url, headers=headers, data=json.dumps(payload))
+                res_json = response.json()
+                
+                if "candidates" in res_json:
+                    ai_summary = res_json["candidates"][0]["content"]["parts"][0]["text"]
+                else:
+                    ai_summary = f"API Error: {json.dumps(res_json)}"
+            except Exception as e:
+                ai_summary = f"Request Failed: {str(e)}"
 
         if MONGO_URI and data:
             collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
