@@ -40,28 +40,55 @@ async def analyze_statement(file: UploadFile = File(...)):
         if GROQ_API_KEY and data:
             url = "https://api.groq.com/openai/v1/chat/completions"
             
-            # 🚀 STRICT JSON PROMPT: No stories, No 'AI' word, Only exact numbers in English.
-            prompt_text = f"""You are a strict financial data processor. Analyze the bank statement text and return ONLY a raw JSON object. 
-            DO NOT use the word 'AI' anywhere. Output must be strictly in English. 
-            DO NOT add markdown formatting like ```json or ```.
-            Extract the exact numbers and return EXACTLY this JSON structure and nothing else:
+            # 🚀 THE MASTER PROMPT: Strictly JSON, Enterprise Level Extraction
+            prompt_text = f"""You are an elite Underwriting System. Analyze this bank statement and extract deep financial insights. 
+            Rules:
+            1. DO NOT output any text, stories, or markdown. Output ONLY a RAW, valid JSON object.
+            2. If any data is missing, output "N/A" or 0.
+            3. DO NOT use the word 'AI'. Ensure perfect English.
+            
+            Extract and return exactly this JSON structure:
             {{
-                "total_credits": "Estimated total credit amount (e.g., ₹5,40,000)",
-                "total_debits": "Estimated total debit amount (e.g., ₹4,10,000)",
-                "active_loans_count": "Total count of distinct active loans (e.g., 2)",
-                "emi_transactions_count": "Total count of EMI payments deducted (e.g., 4)",
-                "bounces_and_late_fees": "Total count of bounced cheques or late fees (e.g., 1)",
-                "health_score": "Score out of 10 based on financials",
-                "summary": "One line professional financial summary without using the word AI."
+                "kyc_details": {{
+                    "account_name": "Name of the account holder",
+                    "bank_name": "Name of the Bank",
+                    "account_number": "Last 4 digits or full if available",
+                    "ifsc_code": "IFSC or Branch name",
+                    "statement_period": "e.g., 01-Jan-2025 to 30-Jun-2025"
+                }},
+                "core_financials": {{
+                    "total_credits": "e.g., ₹5,40,000",
+                    "total_debits": "e.g., ₹4,10,000",
+                    "opening_balance": "e.g., ₹12,000",
+                    "closing_balance": "e.g., ₹25,000",
+                    "average_monthly_balance": "Estimated AMB e.g., ₹30,000"
+                }},
+                "loans_and_emis": [
+                    {{"company": "e.g., Bajaj Finance", "amount": "e.g., ₹4500", "category": "e.g., Auto Loan", "status": "e.g., Paid / Bounced"}}
+                ],
+                "risk_and_red_flags": {{
+                    "bounced_transactions_count": 0,
+                    "hidden_bank_charges": "Total amount deducted as SMS/Penalty/Maintenance fees",
+                    "risk_level": "Low / Medium / High"
+                }},
+                "behavioral_insights": {{
+                    "primary_income_source": "e.g., Salary / Business / Cash Deposit",
+                    "salary_consistency": "e.g., Consistent / Irregular / N/A",
+                    "top_spending_categories": ["e.g., E-commerce", "Food", "Cash Withdrawals"]
+                }},
+                "health_score": {{
+                    "score": 85,
+                    "out_of": 100,
+                    "verdict": "One line professional verdict on financial health."
+                }}
             }}
             
             Bank Statement Data:
-            {str(data)[:20000]}"""
+            {str(data)[:25000]}"""
 
             models_to_try = [
                 "llama-3.3-70b-versatile",
-                "llama-3.1-70b-versatile",
-                "llama-3.1-8b-instant"
+                "llama-3.1-70b-versatile"
             ]
             
             headers = {
@@ -74,16 +101,17 @@ async def analyze_statement(file: UploadFile = File(...)):
                 payload = {
                     "model": model_name,
                     "messages": [{"role": "user", "content": prompt_text}],
-                    "temperature": 0.1  # 🚀 Low temperature for precise JSON output
+                    "temperature": 0.0 # Strict precise output
                 }
                 try:
                     response = requests.post(url, headers=headers, json=payload)
                     res_json = response.json()
                     
                     if "choices" in res_json:
-                        # 🚀 Clean up markdown tags in case Groq adds them
                         raw_text = res_json["choices"][0]["message"]["content"]
-                        ai_summary = raw_text.replace("```json", "").replace("```", "").strip()
+                        # 🚀 Auto-clean if AI mistakenly adds markdown
+                        cleaned_json = raw_text.strip().lstrip("```json").rstrip("```").strip()
+                        ai_summary = cleaned_json
                         success = True
                         break
                 except Exception as e:
