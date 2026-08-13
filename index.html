@@ -3,76 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financial Statement Analyzer</title>
-    <!-- Tailwind CSS for Professional UI -->
+    <title>Enterprise Financial Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body class="bg-slate-50 p-4 md:p-8 font-sans">
-    <div class="max-w-5xl mx-auto">
-        <!-- Upload Section -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8 text-center">
-            <h1 class="text-3xl font-extrabold text-slate-800">Financial Analyzer</h1>
-            <p class="text-slate-500 mt-2">Upload Bank Statement for Instant Review</p>
-            
-            <div class="mt-8 flex flex-col items-center justify-center">
-                <input type="file" id="pdfFile" class="block w-full max-w-md text-sm text-slate-500 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition" accept=".pdf" />
-            </div>
-            
-            <button id="analyzeBtn" onclick="uploadFile()" class="mt-6 w-full max-w-md bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl transition duration-300 shadow-md">
-                Generate Report
-            </button>
-            <p id="loadingText" class="text-blue-600 font-semibold mt-4 hidden animate-pulse">Processing Statement... Please wait ⏳</p>
+<body class="bg-gray-50 font-sans text-gray-800">
+
+    <!-- Top Navbar -->
+    <nav class="bg-slate-900 text-white p-4 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wider"><i class="fas fa-chart-line text-blue-400 mr-2"></i> FinIntel Pro</h1>
+            <span class="text-xs bg-blue-600 px-2 py-1 rounded-full border border-blue-400">v2.0 Enterprise</span>
         </div>
+    </nav>
 
-        <!-- Professional Dashboard (Hidden by default) -->
-        <div id="dashboard" class="hidden">
-            <h2 class="text-2xl font-bold text-slate-800 mb-6 border-b pb-2">Financial Report</h2>
-            
-            <!-- Metric Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-green-500">
-                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Credits</h3>
-                    <p id="totalCredits" class="text-2xl font-black text-slate-800 mt-2">₹0</p>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-red-500">
-                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Debits</h3>
-                    <p id="totalDebits" class="text-2xl font-black text-slate-800 mt-2">₹0</p>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-blue-500">
-                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Active Loans Count</h3>
-                    <p id="activeLoans" class="text-2xl font-black text-slate-800 mt-2">0</p>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-purple-500">
-                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">EMI Transactions Count</h3>
-                    <p id="emiCount" class="text-2xl font-black text-slate-800 mt-2">0</p>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-orange-500">
-                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Bounces & Late Fees</h3>
-                    <p id="bounces" class="text-2xl font-black text-slate-800 mt-2">0</p>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-indigo-500">
-                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Health Score</h3>
-                    <p id="healthScore" class="text-2xl font-black text-slate-800 mt-2">0/10</p>
-                </div>
-
-            </div>
-
-            <!-- Summary Section -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 border-l-4 border-l-slate-800">
-                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Executive Summary</h3>
-                <p id="summaryText" class="text-slate-700 mt-3 font-medium leading-relaxed"></p>
-            </div>
-        </div>
+    <div class="max-w-7xl mx-auto p-4 md:p-8">
         
-        <!-- Error Box -->
-        <div id="errorBox" class="hidden mt-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm">
-            <span id="errorText" class="block font-medium"></span>
+        <!-- Upload Module -->
+        <div id="uploadSection" class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8 flex flex-col items-center justify-center transition-all">
+            <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-2xl mb-4">
+                <i class="fas fa-file-pdf"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Upload Bank Statement</h2>
+            <p class="text-gray-500 mt-1 mb-6 text-center">Process up to 100 pages instantly using our deep extraction engine.</p>
+            
+            <input type="file" id="pdfFile" class="block w-full max-w-sm text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 transition" accept=".pdf" />
+            
+            <button id="analyzeBtn" onclick="uploadFile()" class="mt-6 w-full max-w-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300">
+                Run Surgical Analysis <i class="fas fa-arrow-right ml-2"></i>
+            </button>
+            
+            <div id="loadingText" class="hidden mt-6 flex flex-col items-center">
+                <i class="fas fa-circle-notch fa-spin text-3xl text-blue-600 mb-2"></i>
+                <p class="text-blue-700 font-medium">Extracting Financial DNA... Please wait ⏳</p>
+            </div>
+            
+            <div id="errorBox" class="hidden mt-4 text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 text-sm font-medium text-center max-w-sm w-full"></div>
+        </div>
+
+        <!-- The Enterprise Dashboard (Hidden initially) -->
+        <div id="dashboard" class="hidden space-y-6">
+            
+            <!-- Section 1: KYC Profile -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-center border-l-4 border-l-slate-800">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <div class="w-12 h-12 bg-slate-100 text-slate-700 rounded-full flex items-center justify-center text-xl font-bold mr-4">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <h2 id="accName" class="text-xl font-bold text-gray-900">Name Loading...</h2>
+                        <p class="text-sm text-gray-500"><span id="bankName">Bank</span> | A/C: <span id="accNumber" class="font-mono text-gray-700">XXXX</span></p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Statement Period</p>
+                    <p id="stmtPeriod" class="text-sm font-medium text-gray-700 mt-1">DD-MMM-YYYY to DD-MMM-YYYY</p>
+                    <p class="text-xs text-gray-400 mt-1">IFSC: <span id="ifscCode" class="font-mono text-gray-600">XXXX</span></p>
+                </div>
+            </div>
+
+            <!-- Section 2: Core Financials (Grid) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider"><i class="fas fa-arrow-down text-green-500 mr-1"></i> Total Credits</p>
+                    <p id="tCredits" class="text-2xl font-black text-gray-800 mt-2">₹0</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider"><i class="fas fa-arrow-up text-red-500 mr-1"></i> Total Debits</p>
+                    <p id="tDebits" class="text-2xl font-black text-gray-800 mt-2">₹0</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider"><i class="fas fa-wallet text-blue-500 mr-1"></i> Avg Monthly Balance</p>
+                    <p id="amb" class="text-2xl font-black text-gray-800 mt-2">₹0</p>
+                </div>
+                <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-5 rounded-xl shadow-sm border border-slate-700 text-white relative overflow-hidden">
+                    <p class="text-xs font-bold text-slate-300 uppercase tracking-wider relative z-10">Health Score</p>
+                    <div class="flex items-end mt-2 relative z-10">
+                        <p id="hScore" class="text-3xl font-black">0</p>
+                        <p class="text-slate-400 font-bold mb-1 ml-1">/100</p>
+                    </div>
+                    <i class="fas fa-heartbeat absolute -bottom-4 -right-2 text-6xl text-slate-700 opacity-50"></i>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Section 3: Loans & EMIs Table -->
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-hidden">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fas fa-landmark text-indigo-500 mr-2"></i> Active Loans & EMIs</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-600">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 rounded-tl-lg">Financer / Company</th>
+                                    <th class="px-4 py-3">Category</th>
+                                    <th class="px-4 py-3">Amount</th>
+                                    <th class="px-4 py-3 rounded-tr-lg">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="loanTableBody" class="divide-y divide-gray-100">
+                                <!-- Data will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Section 4: Risk & Behavior -->
+                <div class="space-y-6">
+                    <!-- Risk Flags -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i> Risk Indicators</h3>
+                        <ul class="space-y-4">
+                            <li class="flex justify-between items-center">
+                                <span class="text-sm font-medium text-gray-600">Bounced Returns</span>
+                                <span id="bounces" class="px-2 py-1 bg-red-100 text-red-700 font-bold rounded-md text-xs">0</span>
+                            </li>
+                            <li class="flex justify-between items-center">
+                                <span class="text-sm font-medium text-gray-600">Hidden Bank Charges</span>
+                                <span id="hiddenCharges" class="font-bold text-gray-800 text-sm">₹0</span>
+                            </li>
+                            <li class="flex justify-between items-center">
+                                <span class="text-sm font-medium text-gray-600">Overall Risk Level</span>
+                                <span id="riskLevel" class="px-2 py-1 bg-yellow-100 text-yellow-700 font-bold rounded-md text-xs uppercase">Evaluating</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Behavior -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fas fa-brain text-purple-500 mr-2"></i> Behavioral Insights</h3>
+                        <div class="mb-3">
+                            <p class="text-xs font-bold text-gray-400 uppercase">Primary Income</p>
+                            <p id="incomeSource" class="text-sm font-semibold text-gray-800">N/A</p>
+                        </div>
+                        <div class="mb-3">
+                            <p class="text-xs font-bold text-gray-400 uppercase">Income Consistency</p>
+                            <p id="incomeConsistency" class="text-sm font-semibold text-gray-800">N/A</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase mb-2">Top Spends</p>
+                            <div id="topSpends" class="flex flex-wrap gap-2">
+                                <!-- Tags injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verdict -->
+            <div class="bg-blue-50 rounded-xl border border-blue-100 p-5">
+                <p class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1"><i class="fas fa-gavel mr-1"></i> Executive Verdict</p>
+                <p id="verdict" class="text-blue-900 font-medium"></p>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="text-center mt-8">
+                <button onclick="window.location.reload()" class="text-gray-500 hover:text-gray-800 font-medium text-sm transition underline">
+                    Analyze Another Statement
+                </button>
+            </div>
         </div>
     </div>
 
@@ -83,9 +171,10 @@
             const loadingText = document.getElementById('loadingText');
             const dashboard = document.getElementById('dashboard');
             const errorBox = document.getElementById('errorBox');
+            const uploadSection = document.getElementById('uploadSection');
             
             if (fileInput.files.length === 0) {
-                alert("Please select a statement first.");
+                showError("Please select a bank statement PDF.");
                 return;
             }
 
@@ -93,47 +182,92 @@
             formData.append("file", fileInput.files[0]);
 
             btn.classList.add('hidden');
-            loadingText.classList.remove('hidden');
-            dashboard.classList.add('hidden');
             errorBox.classList.add('hidden');
-
+            loadingText.classList.remove('hidden');
+            
             try {
-                // Call Backend
-                const response = await fetch('/analyze', {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await fetch('/analyze', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.status === 200) {
                     try {
-                        // Parse strict JSON from backend
                         const data = JSON.parse(result.ai_summary);
                         
-                        document.getElementById('totalCredits').innerText = data.total_credits;
-                        document.getElementById('totalDebits').innerText = data.total_debits;
-                        document.getElementById('activeLoans').innerText = data.active_loans_count;
-                        document.getElementById('emiCount').innerText = data.emi_transactions_count;
-                        document.getElementById('bounces').innerText = data.bounces_and_late_fees;
-                        document.getElementById('healthScore').innerText = data.health_score;
-                        document.getElementById('summaryText').innerText = data.summary;
+                        // Populate KYC
+                        document.getElementById('accName').innerText = data.kyc_details.account_name || "N/A";
+                        document.getElementById('bankName').innerText = data.kyc_details.bank_name || "N/A";
+                        document.getElementById('accNumber').innerText = data.kyc_details.account_number || "N/A";
+                        document.getElementById('ifscCode').innerText = data.kyc_details.ifsc_code || "N/A";
+                        document.getElementById('stmtPeriod').innerText = data.kyc_details.statement_period || "N/A";
+
+                        // Populate Financials
+                        document.getElementById('tCredits').innerText = data.core_financials.total_credits || "0";
+                        document.getElementById('tDebits').innerText = data.core_financials.total_debits || "0";
+                        document.getElementById('amb').innerText = data.core_financials.average_monthly_balance || "0";
                         
+                        // Health Score
+                        document.getElementById('hScore').innerText = data.health_score.score || "0";
+                        document.getElementById('verdict').innerText = data.health_score.verdict || "Analysis complete.";
+
+                        // Risk
+                        document.getElementById('bounces').innerText = data.risk_and_red_flags.bounced_transactions_count || "0";
+                        document.getElementById('hiddenCharges').innerText = data.risk_and_red_flags.hidden_bank_charges || "0";
+                        
+                        const rLevel = data.risk_and_red_flags.risk_level || "Unknown";
+                        const rBadge = document.getElementById('riskLevel');
+                        rBadge.innerText = rLevel;
+                        if(rLevel.toLowerCase().includes('high')) { rBadge.className = "px-2 py-1 bg-red-100 text-red-700 font-bold rounded-md text-xs uppercase"; }
+                        else if(rLevel.toLowerCase().includes('low')) { rBadge.className = "px-2 py-1 bg-green-100 text-green-700 font-bold rounded-md text-xs uppercase"; }
+                        else { rBadge.className = "px-2 py-1 bg-yellow-100 text-yellow-700 font-bold rounded-md text-xs uppercase"; }
+
+                        // Behavior
+                        document.getElementById('incomeSource').innerText = data.behavioral_insights.primary_income_source || "N/A";
+                        document.getElementById('incomeConsistency').innerText = data.behavioral_insights.salary_consistency || "N/A";
+                        
+                        const spends = data.behavioral_insights.top_spending_categories || [];
+                        const spendHTML = spends.map(s => `<span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-semibold border border-slate-200">${s}</span>`).join('');
+                        document.getElementById('topSpends').innerHTML = spendHTML || "<span class='text-sm text-gray-400'>No major categories found</span>";
+
+                        // Loans Table
+                        const loans = data.loans_and_emis || [];
+                        const loanTbody = document.getElementById('loanTableBody');
+                        if (loans.length === 0) {
+                            loanTbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-sm text-gray-400 italic">No active loans or EMIs detected in this statement.</td></tr>`;
+                        } else {
+                            loanTbody.innerHTML = loans.map(l => `
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-4 py-3 font-semibold text-gray-800">${l.company}</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-xs border border-indigo-100">${l.category}</span></td>
+                                    <td class="px-4 py-3 font-mono font-bold text-gray-700">${l.amount}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="${l.status.toLowerCase().includes('bounc') ? 'text-red-600 font-bold' : 'text-green-600 font-semibold'} text-sm"><i class="fas ${l.status.toLowerCase().includes('bounc') ? 'fa-times-circle' : 'fa-check-circle'} mr-1"></i> ${l.status}</span>
+                                    </td>
+                                </tr>
+                            `).join('');
+                        }
+
+                        // UI Transition
+                        uploadSection.classList.add('hidden');
                         dashboard.classList.remove('hidden');
+
                     } catch (e) {
-                        document.getElementById('errorText').innerText = "Data parsing error. Ensure the document is a valid statement.";
-                        errorBox.classList.remove('hidden');
+                        showError("Data extraction error. The statement might be protected or unclear.");
                     }
                 } else {
-                    document.getElementById('errorText').innerText = result.message || result.error;
-                    errorBox.classList.remove('hidden');
+                    showError(result.message || result.error);
                 }
             } catch (error) {
-                document.getElementById('errorText').innerText = "Server connection failed. Please try again.";
-                errorBox.classList.remove('hidden');
+                showError("Server connection failed. Check your internet.");
             } finally {
                 btn.classList.remove('hidden');
                 loadingText.classList.add('hidden');
             }
+        }
+
+        function showError(msg) {
+            const errorBox = document.getElementById('errorBox');
+            errorBox.innerText = msg;
+            errorBox.classList.remove('hidden');
         }
     </script>
 </body>
