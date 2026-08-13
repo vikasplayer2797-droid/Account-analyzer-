@@ -5,6 +5,7 @@ import shutil
 import os
 import requests
 import json
+import re  # 🚀 नई लाइब्रेरी जो फालतू स्पेस साफ करेगी
 from pymongo import MongoClient
 from parser import extract_transactions
 
@@ -39,6 +40,13 @@ async def analyze_statement(file: UploadFile = File(...)):
         
         if GROQ_API_KEY and data:
             url = "https://api.groq.com/openai/v1/chat/completions"
+            
+            # 🚀 DATA COMPRESSOR: फालतू स्पेस और न्यू-लाइन हटाकर डेटा को निचोड़ देगा!
+            raw_text = str(data)
+            compressed_data = re.sub(r'\s+', ' ', raw_text).strip()
+            
+            # 🚀 15,000 कैरेक्टर्स की सेफ लिमिट (Groq Free Tier के लिए एकदम परफेक्ट)
+            final_payload = compressed_data[:15000]
             
             prompt_text = f"""You are an elite Underwriting System. Analyze this bank statement and extract deep financial insights. 
             Rules:
@@ -82,9 +90,8 @@ async def analyze_statement(file: UploadFile = File(...)):
             }}
             
             Bank Statement Data:
-            {str(data)[:25000]}"""
+            {final_payload}"""
 
-            # 🚀 THE HEAVY DUTY 32K MODEL (ये मेमोरी फुल होने से नहीं रुकेगा)
             models_to_try = [
                 "mixtral-8x7b-32768",
                 "llama-3.3-70b-versatile",
@@ -112,7 +119,6 @@ async def analyze_statement(file: UploadFile = File(...)):
                     
                     if "choices" in res_json:
                         raw_text = res_json["choices"][0]["message"]["content"].strip()
-                        # 🚀 Sniper cut for extreme safety
                         start_idx = raw_text.find('{')
                         end_idx = raw_text.rfind('}')
                         if start_idx != -1 and end_idx != -1:
