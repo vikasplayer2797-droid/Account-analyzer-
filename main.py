@@ -40,7 +40,6 @@ async def analyze_statement(file: UploadFile = File(...)):
         if GROQ_API_KEY and data:
             url = "https://api.groq.com/openai/v1/chat/completions"
             
-            # 🚀 THE MASTER PROMPT: Strictly JSON, Enterprise Level Extraction
             prompt_text = f"""You are an elite Underwriting System. Analyze this bank statement and extract deep financial insights. 
             Rules:
             1. DO NOT output any text, stories, or markdown. Output ONLY a RAW, valid JSON object.
@@ -109,11 +108,16 @@ async def analyze_statement(file: UploadFile = File(...)):
                     
                     if "choices" in res_json:
                         raw_text = res_json["choices"][0]["message"]["content"]
-                        # 🚀 Auto-clean if AI mistakenly adds markdown
-                        cleaned_json = raw_text.strip().lstrip("```json").rstrip("```").strip()
-                        ai_summary = cleaned_json
-                        success = True
-                        break
+                        
+                        # 🚀 THE SNIPER CUT: सिर्फ { और } के बीच का डेटा निकालेगा, फालतू टेक्स्ट इग्नोर!
+                        start_idx = raw_text.find('{')
+                        end_idx = raw_text.rfind('}')
+                        
+                        if start_idx != -1 and end_idx != -1:
+                            cleaned_json = raw_text[start_idx:end_idx+1]
+                            ai_summary = cleaned_json
+                            success = True
+                            break
                 except Exception as e:
                     continue
             
