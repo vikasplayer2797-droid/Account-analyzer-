@@ -38,8 +38,8 @@ async def analyze_statement(file: UploadFile = File(...)):
         ai_summary = "AI Summary unavailable."
         
         if GEMINI_API_KEY and data:
-            # 🚀 FIXED URL: 'gemini-pro' jo har key par chalta hai
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+            # 🚀 STABLE V1 ENDPOINT WITH GEMINI-1.5-FLASH
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
             
             prompt_text = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
             Provide exact details for these 4 points:
