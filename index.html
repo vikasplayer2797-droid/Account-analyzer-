@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>AI Financial Analyzer</title>
+</head>
+<body class="bg-gradient-to-r from-blue-50 to-blue-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+        <div class="text-4xl mb-4">📊</div>
+        <h1 class="text-2xl font-bold mb-2 text-gray-800">AI Financial Analyzer</h1>
+        <p class="text-gray-500 mb-6 text-sm">Upload Bank Statement (PDF) for instant AI review</p>
+        
+        <input type="file" id="fileInput" class="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+        
+        <button onclick="uploadFile()" id="btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl w-full transition-all shadow-lg">
+            Analyze Statement 🚀
+        </button>
+        
+        <div id="result" class="mt-6 text-left p-4 bg-gray-50 rounded-xl text-sm text-gray-700 hidden border border-gray-200 shadow-inner">
+        </div>
+    </div>
+
+    <script>
+        async function uploadFile() {
+            const file = document.getElementById('fileInput').files[0];
+            if(!file) return alert("Bhai, pehle PDF toh select kar! 😅");
+            
+            const btn = document.getElementById('btn');
+            const resultDiv = document.getElementById('result');
+            
+            btn.innerText = "Analyzing... Please wait ⏳";
+            btn.disabled = true;
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `<span class="animate-pulse">AI is reading the statement... 🧠</span>`;
+            
+            const formData = new FormData();
+            formData.append("file", file);
+            
+            try {
+                const res = await fetch("/analyze", { method: "POST", body: formData });
+                const data = await res.json();
+                
+                if(data.ai_summary) {
+                    resultDiv.innerHTML = `<h3 class="font-bold text-blue-600 mb-2">🤖 AI Report:</h3><p class="whitespace-pre-line">${data.ai_summary}</p>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="text-red-500">${data.message || data.error}</span>`;
+                }
+            } catch(e) {
+                resultDiv.innerHTML = `<span class="text-red-500">Server Error!</span>`;
+            }
+            btn.innerText = "Analyze Statement 🚀";
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
