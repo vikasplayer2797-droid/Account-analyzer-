@@ -5,7 +5,7 @@ import shutil
 import os
 import requests
 import json
-import re  # 🚀 नई लाइब्रेरी जो फालतू स्पेस साफ करेगी
+import re
 from pymongo import MongoClient
 from parser import extract_transactions
 
@@ -40,34 +40,63 @@ async def analyze_statement(file: UploadFile = File(...)):
         
         if GROQ_API_KEY and data:
             url = "https://api.groq.com/openai/v1/chat/completions"
-            
-            # 🚀 DATA COMPRESSOR: फालतू स्पेस और न्यू-लाइन हटाकर डेटा को निचोड़ देगा!
             raw_text = str(data)
-            compressed_data = re.sub(r'\s+', ' ', raw_text).strip()
             
-            # 🚀 15,000 कैरेक्टर्स की सेफ लिमिट (Groq Free Tier के लिए एकदम परफेक्ट)
-            final_payload = compressed_data[:15000]
+            # 🚀 PILLAR 1: THE SANDWICH STRATEGY (Header & Footer Extraction)
+            if len(raw_text) > 10000:
+                header_text = raw_text[:5000]
+                footer_text = raw_text[-5000:]
+            else:
+                header_text = raw_text
+                footer_text = ""
+                
+            # 🚀 PILLAR 2: THE KEYWORD SNIPER (Targeted Extraction)
+            keywords = ['emi', 'loan', 'bounce', 'return', 'penalty', 'charge', 'fee', 'ecs', 'ach', 'mandate', 'bajaj', 'muthoot', 'finance', 'chq', 'reject']
+            critical_lines = []
+            for line in raw_text.split('\n'):
+                if any(keyword in line.lower() for keyword in keywords):
+                    critical_lines.append(line.strip())
             
-            prompt_text = f"""You are an elite Underwriting System. Analyze this bank statement and extract deep financial insights. 
-            Rules:
-            1. Output ONLY a RAW, valid JSON object. Do not output anything else.
-            2. If any data is missing, output "N/A" or 0.
+            # Remove duplicates and limit lines to save API tokens
+            critical_lines = list(set(critical_lines))[:200]
+            sniper_text = "\n".join(critical_lines)
+            
+            # 🚀 PILLAR 3: THE SUPER-PAYLOAD
+            final_payload = f"""
+            --- HEADER & KYC DATA (FIND NAME, ACC NO, IFSC HERE) ---
+            {header_text}
+            
+            --- CRITICAL TRANSACTIONS (FIND EMIs, LOANS, BOUNCES HERE) ---
+            {sniper_text}
+            
+            --- FOOTER & TOTALS (FIND EXACT PRINTED TOTALS & CLOSING BALANCE HERE) ---
+            {footer_text}
+            """
+            
+            # 🚀 THE STRICT PROMPT LOCKDOWN
+            prompt_text = f"""You are an elite Underwriting System. Analyze this pre-processed bank statement data. 
+            
+            STRICT RULES:
+            1. DO NOT CALCULATE TOTALS YOURSELF. Find the explicitly printed "TRANSACTION TOTAL", "Total Credit", or "Total Debit" in the FOOTER section.
+            2. The Account Holder Name is in the HEADER section. DO NOT pick names from UPI transactions. Look for labels like Name, Mr/Mrs, or the first standalone entity name at the very top.
+            3. Output ONLY a RAW, valid JSON object. Do not output markdown.
+            4. If any data is missing, output "N/A" or 0.
             
             Extract and return exactly this JSON structure:
             {{
                 "kyc_details": {{
-                    "account_name": "Name of the account holder",
+                    "account_name": "Account holder's name from header",
                     "bank_name": "Name of the Bank",
                     "account_number": "Last 4 digits or full if available",
                     "ifsc_code": "IFSC or Branch name",
                     "statement_period": "e.g., 01-Jan-2025 to 30-Jun-2025"
                 }},
                 "core_financials": {{
-                    "total_credits": "e.g., ₹5,40,000",
-                    "total_debits": "e.g., ₹4,10,000",
-                    "opening_balance": "e.g., ₹12,000",
-                    "closing_balance": "e.g., ₹25,000",
-                    "average_monthly_balance": "Estimated AMB e.g., ₹30,000"
+                    "total_credits": "Exact printed credit total (e.g., ₹14,90,096.23)",
+                    "total_debits": "Exact printed debit total (e.g., ₹14,67,207.59)",
+                    "opening_balance": "e.g., ₹0.00",
+                    "closing_balance": "Exact printed closing balance (e.g., ₹22,888.64)",
+                    "average_monthly_balance": "Estimated AMB"
                 }},
                 "loans_and_emis": [
                     {{"company": "e.g., Bajaj Finance", "amount": "e.g., ₹4500", "category": "e.g., Auto Loan", "status": "e.g., Paid / Bounced"}}
@@ -104,8 +133,6 @@ async def analyze_statement(file: UploadFile = File(...)):
             }
             
             success = False
-            last_error = ""
-            
             for model_name in models_to_try:
                 payload = {
                     "model": model_name,
@@ -127,14 +154,11 @@ async def analyze_statement(file: UploadFile = File(...)):
                             ai_summary = raw_text
                         success = True
                         break
-                    else:
-                        last_error = json.dumps(res_json)
                 except Exception as e:
-                    last_error = str(e)
                     continue
             
             if not success:
-                return {"status": 500, "error": f"API Rejected: {last_error}", "message": "API Error"}
+                return {"status": 500, "error": "API Rejected", "message": "API Error"}
 
         if MONGO_URI and data:
             collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
