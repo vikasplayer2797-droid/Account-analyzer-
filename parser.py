@@ -1,19 +1,24 @@
 import pdfplumber
 
 def extract_transactions(pdf_path):
-    transactions = []
+    full_text = ""
     
     try:
         with pdfplumber.open(pdf_path) as pdf:
+            # यह पूरे PDF के एक-एक पेज को पढ़ेगा
             for page in pdf.pages:
-                table = page.extract_table()
-                if table is not None:
-                    transactions.extend(table)
+                text = page.extract_text()
+                if text:
+                    full_text += text + "\n"
+                
+                # 🚀 RAM बचाने का असली जादू: पेज पढ़ने के बाद मेमोरी साफ़ कर दो
+                page.flush_cache()
                     
-        if len(transactions) == 0:
-            return [["Error", "PDF में कोई टेबल नहीं मिली! क्या यह एक स्कैन की हुई फोटो या पासबुक है? कृपया असली E-Statement अपलोड करें।"]]
+        # अगर PDF में कोई टेक्स्ट नहीं मिला (फोटो है)
+        if len(full_text.strip()) < 50:
+            return "Error: PDF में कोई टेक्स्ट नहीं मिला! कृपया असली ई-स्टेटमेंट अपलोड करें।"
             
-        return transactions
+        return full_text
 
     except Exception as e:
-        return [["System Error", f"PDF पढ़ने में दिक्कत: {str(e)}"]]
+        return f"Error: PDF पढ़ने में दिक्कत - {str(e)}"
