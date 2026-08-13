@@ -35,27 +35,33 @@ async def analyze_statement(file: UploadFile = File(...)):
         if isinstance(data, str) and data.startswith("Error"):
             return {"status": 400, "message": data}
 
-        ai_summary = "AI Summary unavailable."
+        ai_summary = "{}"
         
         if GROQ_API_KEY and data:
             url = "https://api.groq.com/openai/v1/chat/completions"
             
-            prompt_text = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
-            Provide exact details for these 4 points:
-            1. 💰 टर्नओवर (Turnover): Total estimated yearly/monthly credit flow.
-            2. 🏦 चल रहे लोन (Active Loans & EMIs): List the exact names of companies cutting EMIs and the EMI amount.
-            3. ❌ बाउंस और पेनल्टी (Bounces & Late Fees): Find any bounced EMIs, ECS Returns, or late payment charges.
-            4. 📊 फाइनेंशियल स्कोर (Health Score): Give a score out of 10 based on repayment behavior.
+            # 🚀 STRICT JSON PROMPT: No stories, No 'AI' word, Only exact numbers in English.
+            prompt_text = f"""You are a strict financial data processor. Analyze the bank statement text and return ONLY a raw JSON object. 
+            DO NOT use the word 'AI' anywhere. Output must be strictly in English. 
+            DO NOT add markdown formatting like ```json or ```.
+            Extract the exact numbers and return EXACTLY this JSON structure and nothing else:
+            {{
+                "total_credits": "Estimated total credit amount (e.g., ₹5,40,000)",
+                "total_debits": "Estimated total debit amount (e.g., ₹4,10,000)",
+                "active_loans_count": "Total count of distinct active loans (e.g., 2)",
+                "emi_transactions_count": "Total count of EMI payments deducted (e.g., 4)",
+                "bounces_and_late_fees": "Total count of bounced cheques or late fees (e.g., 1)",
+                "health_score": "Score out of 10 based on financials",
+                "summary": "One line professional financial summary without using the word AI."
+            }}
             
             Bank Statement Data:
             {str(data)[:20000]}"""
 
-            # 🚀 TERMINATOR LOOP FOR GROQ (4 लेटेस्ट और सबसे फ़ास्ट मॉडल्स)
             models_to_try = [
                 "llama-3.3-70b-versatile",
-                "llama-3.1-70b-versatile", 
-                "llama-3.1-8b-instant",
-                "mixtral-8x7b-32768"
+                "llama-3.1-70b-versatile",
+                "llama-3.1-8b-instant"
             ]
             
             headers = {
@@ -64,29 +70,27 @@ async def analyze_statement(file: UploadFile = File(...)):
             }
             
             success = False
-            last_error = ""
-            
             for model_name in models_to_try:
                 payload = {
                     "model": model_name,
-                    "messages": [{"role": "user", "content": prompt_text}]
+                    "messages": [{"role": "user", "content": prompt_text}],
+                    "temperature": 0.1  # 🚀 Low temperature for precise JSON output
                 }
                 try:
                     response = requests.post(url, headers=headers, json=payload)
                     res_json = response.json()
                     
                     if "choices" in res_json:
-                        ai_summary = res_json["choices"][0]["message"]["content"]
+                        # 🚀 Clean up markdown tags in case Groq adds them
+                        raw_text = res_json["choices"][0]["message"]["content"]
+                        ai_summary = raw_text.replace("```json", "").replace("```", "").strip()
                         success = True
-                        break  # 🚀 मॉडल चल गया, लूप रोक दो!
-                    else:
-                        last_error = json.dumps(res_json)
+                        break
                 except Exception as e:
-                    last_error = str(e)
                     continue
             
             if not success:
-                ai_summary = f"API Error: 4 मॉडल्स ट्राई किए, सब फेल! Last Error: {last_error}"
+                ai_summary = '{"error": "Failed to analyze document"}'
 
         if MONGO_URI and data:
             collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
