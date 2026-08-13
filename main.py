@@ -1,24 +1,43 @@
-import pdfplumber
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+import shutil
+import os
+from pymongo import MongoClient
+from parser import extract_transactions
 
-def extract_transactions(pdf_path):
-    transactions = []
-    
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+MONGO_URI = os.getenv("MONGO_URI")
+if MONGO_URI:
     try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                # पेज से टेबल निकालने की कोशिश करो
-                table = page.extract_table()
-                
-                # अगर टेबल मिली है (None नहीं है), तभी उसे लिस्ट में जोड़ो
-                if table is not None:
-                    transactions.extend(table)
-                    
-        # अगर पूरी PDF छान मारी और एक भी टेबल नहीं मिली
-        if len(transactions) == 0:
-            return [["Error", "PDF में कोई टेबल नहीं मिली! क्या यह एक स्कैन की हुई फोटो या पासबुक है? कृपया असली E-Statement अपलोड करें।"]]
-            
-        return transactions
-
+        client = MongoClient(MONGO_URI)
+        db = client["financial_db"]
+        collection = db["statements"]
+        print("Connected to MongoDB!")
     except Exception as e:
-        # अगर फाइल खोलने में कोई दिक्कत आए
-        return [["System Error", f"PDF पढ़ने में दिक्कत: {str(e)}"]]
+        print(f"DB Connection Error: {e}")
+
+@app.post("/analyze")
+async def analyze_statement(file: UploadFile = File(...)):
+    try:
+        with open("temp.pdf", "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        data = extract_transactions("temp.pdf")
+        
+        if MONGO_URI and data:
+            collection.insert_one({"filename": file.filename, "extracted_data": data})
+            return {"status": 200, "message": "Success! Data Extracted and Saved to MongoDB 🚀", "data": data}
+        
+        return {"status": 200, "message": "Success! Extracted but not saved.", "data": data}
+    
+    except Exception as e:
+        return {"status": 500, "error": str(e), "message": "File processing failed. Please check the PDF format."}
