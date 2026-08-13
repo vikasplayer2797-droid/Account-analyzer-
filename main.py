@@ -40,9 +40,8 @@ async def analyze_statement(file: UploadFile = File(...)):
         
         if GEMINI_API_KEY and data:
             try:
-                # 🚀 FIX: Universal Model 'gemini-pro' जो कभी फेल नहीं होता
-                model = genai.GenerativeModel('gemini-pro')
-             
+                # 🚀 SMART SWITCHER: पहले सबसे तगड़ा मॉडल ट्राई करेगा
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 prompt = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
                 Provide exact details for these 4 points:
                 1. 💰 टर्नओवर (Turnover): Total estimated yearly/monthly credit flow.
@@ -51,12 +50,22 @@ async def analyze_statement(file: UploadFile = File(...)):
                 4. 📊 फाइनेंशियल स्कोर (Health Score): Give a score out of 10 based on repayment behavior.
                 
                 Bank Statement Data:
-                {str(data)[:30000]}""" # 🚀 Limit set to avoid any overload
+                {str(data)[:30000]}"""
                 
                 response = model.generate_content(prompt)
                 ai_summary = response.text
+                
             except Exception as e:
-                ai_summary = f"AI Analysis Error: {str(e)}"
+                if "404" in str(e) or "400" in str(e):
+                    # 🚀 अगर वो फेल हुआ, तो यूनिवर्सल मॉडल (gemini-pro) यूज़ करेगा
+                    try:
+                        backup_model = genai.GenerativeModel('gemini-pro')
+                        response = backup_model.generate_content(prompt)
+                        ai_summary = response.text
+                    except Exception as backup_e:
+                        ai_summary = f"AI Error: {str(backup_e)}"
+                else:
+                    ai_summary = f"AI Error: {str(e)}"
 
         if MONGO_URI and data:
             collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
