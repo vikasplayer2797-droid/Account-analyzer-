@@ -17,7 +17,8 @@ if MONGO_URI:
     client = MongoClient(MONGO_URI)
     collection = client["financial_db"]["statements"]
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# 🚀 अब हम Groq AI इस्तेमाल कर रहे हैं
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_ui():
@@ -37,9 +38,9 @@ async def analyze_statement(file: UploadFile = File(...)):
 
         ai_summary = "AI Summary unavailable."
         
-        if GEMINI_API_KEY and data:
-            # 🚀 Standard & Clean URL with API Key query parameter
-            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        if GROQ_API_KEY and data:
+            # 🚀 GROQ Llama-3 API CALL
+            url = "https://api.groq.com/openai/v1/chat/completions"
             
             prompt_text = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
             Provide exact details for these 4 points:
@@ -49,22 +50,24 @@ async def analyze_statement(file: UploadFile = File(...)):
             4. 📊 फाइनेंशियल स्कोर (Health Score): Give a score out of 10 based on repayment behavior.
             
             Bank Statement Data:
-            {str(data)[:25000]}"""
+            {str(data)[:20000]}"""
 
             payload = {
-                "contents": [{
-                    "parts": [{"text": prompt_text}]
-                }]
+                "model": "llama3-70b-8192",  # दुनिया के सबसे स्मार्ट मॉडल्स में से एक
+                "messages": [{"role": "user", "content": prompt_text}]
             }
             
-            headers = {'Content-Type': 'application/json'}
+            headers = {
+                'Authorization': f'Bearer {GROQ_API_KEY}',
+                'Content-Type': 'application/json'
+            }
             
             try:
-                response = requests.post(url, headers=headers, data=json.dumps(payload))
+                response = requests.post(url, headers=headers, json=payload)
                 res_json = response.json()
                 
-                if "candidates" in res_json:
-                    ai_summary = res_json["candidates"][0]["content"]["parts"][0]["text"]
+                if "choices" in res_json:
+                    ai_summary = res_json["choices"][0]["message"]["content"]
                 else:
                     ai_summary = f"API Error: {json.dumps(res_json)}"
             except Exception as e:
