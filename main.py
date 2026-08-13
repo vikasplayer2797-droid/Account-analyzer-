@@ -39,40 +39,39 @@ async def analyze_statement(file: UploadFile = File(...)):
         ai_summary = "AI Summary unavailable."
         
         if GEMINI_API_KEY and data:
-            try:
-                # 🚀 THE GOD MODE FIX: AUTO-DETECT WORKING MODEL
-                available_models = []
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        available_models.append(m.name)
-                        
-                if not available_models:
-                    ai_summary = "AI Error: No working models found on this API Key."
-                else:
-                    # जो भी सबसे बढ़िया मॉडल मिलेगा, कोड उसे खुद चुन लेगा
-                    target_model = available_models[0]
-                    for m in available_models:
-                        if 'flash' in m.lower():
-                            target_model = m
-                            break
-                    
-                    model = genai.GenerativeModel(target_model)
-                    
-                    prompt = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
-                    Provide exact details for these 4 points:
-                    1. 💰 टर्नओवर (Turnover): Total estimated yearly/monthly credit flow.
-                    2. 🏦 चल रहे लोन (Active Loans & EMIs): List the exact names of companies cutting EMIs and the EMI amount.
-                    3. ❌ बाउंस और पेनल्टी (Bounces & Late Fees): Find any bounced EMIs, ECS Returns, or late payment charges.
-                    4. 📊 फाइनेंशियल स्कोर (Health Score): Give a score out of 10 based on repayment behavior.
-                    
-                    Bank Statement Data:
-                    {str(data)[:30000]}"""
-                    
+            # 🚀 THE TERMINATOR PROTOCOL: 5 मॉडल्स की लिस्ट, कोई तो चलेगा!
+            models_to_try = [
+                'gemini-1.5-flash',
+                'gemini-1.5-flash-latest',
+                'gemini-1.5-pro',
+                'gemini-pro',
+                'gemini-1.0-pro'
+            ]
+            
+            prompt = f"""You are an expert Financial Analyst. Read this bank statement text and give a strict report in Hindi/English mix.
+            Provide exact details for these 4 points:
+            1. 💰 टर्नओवर (Turnover): Total estimated yearly/monthly credit flow.
+            2. 🏦 चल रहे लोन (Active Loans & EMIs): List the exact names of companies cutting EMIs and the EMI amount.
+            3. ❌ बाउंस और पेनल्टी (Bounces & Late Fees): Find any bounced EMIs, ECS Returns, or late payment charges.
+            4. 📊 फाइनेंशियल स्कोर (Health Score): Give a score out of 10 based on repayment behavior.
+            
+            Bank Statement Data:
+            {str(data)[:30000]}"""
+            
+            success = False
+            for model_name in models_to_try:
+                try:
+                    model = genai.GenerativeModel(model_name)
                     response = model.generate_content(prompt)
                     ai_summary = response.text
-                    
-            except Exception as e:
-                ai_summary = f"AI Error: {str(e)}"
+                    success = True
+                    break  # 🚀 जैसे ही एक मॉडल चला, लूप रोक दो!
+                except Exception as e:
+                    print(f"Failed with {model_name}: {str(e)}")
+                    continue  # 🚀 अगर फेल हुआ, तो अगला मॉडल ट्राई करो
+            
+            if not success:
+                ai_summary = "AI Error: 5 मॉडल्स ट्राई किए, लेकिन Google API ने रिजेक्ट कर दिया। कृपया अपनी API Key चेक करें।"
 
         if MONGO_URI and data:
             collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
