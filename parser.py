@@ -40,7 +40,7 @@ def extract_transactions(file_path):
             # सिर्फ असली EMI निकालो
             if any(l in line_lower for l in loan_keywords):
                 if not any(ign in line_lower for ign in ignore_keywords):
-                    # 🚀 स्मार्ट कैप्चर: अमाउंट अगर अगली लाइन में चला गया हो, तो ऊपर-नीचे की 3 लाइनें लपेट लो
+                    # स्मार्ट कैप्चर: ऊपर-नीचे की लाइनें लपेट लो
                     start = max(0, i - 1)
                     end = min(len(lines), i + 3)
                     context_block = " | ".join([lines[j].strip() for j in range(start, end) if lines[j].strip()])
