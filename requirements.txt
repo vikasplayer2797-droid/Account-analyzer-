@@ -1,11 +1,6 @@
 fastapi
 uvicorn
-pdfplumber
-pymongo
 python-multipart
-fastapi
-uvicorn
-pdfplumber
+requests
 pymongo
-python-multipart
-google-generativeai
+pdfplumber
