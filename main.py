@@ -5,7 +5,6 @@ import shutil
 import os
 import requests
 import json
-import re
 from pymongo import MongoClient
 from parser import extract_transactions
 
@@ -31,139 +30,90 @@ async def analyze_statement(file: UploadFile = File(...)):
         with open("temp.pdf", "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        data = extract_transactions("temp.pdf")
+        # 🚀 1. कॉल Python Rule Engine (No AI involved yet)
+        parsed_data = extract_transactions("temp.pdf")
         
-        if isinstance(data, str) and data.startswith("Error"):
-            return {"status": 400, "message": data}
+        if parsed_data.get("status") == "error":
+            return {"status": 400, "message": parsed_data.get("message")}
 
         ai_summary = "{}"
         
-        if GROQ_API_KEY and data:
+        if GROQ_API_KEY:
             url = "https://api.groq.com/openai/v1/chat/completions"
-            raw_text = str(data)
             
-            # 🚀 PILLAR 1: THE SANDWICH STRATEGY (Header & Footer Extraction)
-            if len(raw_text) > 10000:
-                header_text = raw_text[:5000]
-                footer_text = raw_text[-5000:]
-            else:
-                header_text = raw_text
-                footer_text = ""
-                
-            # 🚀 PILLAR 2: THE KEYWORD SNIPER (Targeted Extraction)
-            keywords = ['emi', 'loan', 'bounce', 'return', 'penalty', 'charge', 'fee', 'ecs', 'ach', 'mandate', 'bajaj', 'muthoot', 'finance', 'chq', 'reject']
-            critical_lines = []
-            for line in raw_text.split('\n'):
-                if any(keyword in line.lower() for keyword in keywords):
-                    critical_lines.append(line.strip())
+            # 🚀 2. Send PRE-CALCULATED data to AI
+            prompt_text = f"""You are a JSON formatting engine. I have already extracted the exact financial data using a deterministic Python engine. 
+            Do NOT alter the amounts provided. Do NOT hallucinate.
             
-            # Remove duplicates and limit lines to save API tokens
-            critical_lines = list(set(critical_lines))[:200]
-            sniper_text = "\n".join(critical_lines)
+            PRE-CALCULATED DATA GIVEN TO YOU:
+            - Header Text (Find Account Name, A/C No, IFSC here): {parsed_data['header']}
+            - Exact Total Credits: {parsed_data['total_credits']}
+            - Exact Total Debits: {parsed_data['total_debits']}
+            - Exact Bounces Count: {parsed_data['bounces_count']}
+            - Filtered EMI Lines (These are confirmed non-UPI loans. Extract Name and Amount from these lines): 
+            {parsed_data['valid_emis']}
             
-            # 🚀 PILLAR 3: THE SUPER-PAYLOAD
-            final_payload = f"""
-            --- HEADER & KYC DATA (FIND NAME, ACC NO, IFSC HERE) ---
-            {header_text}
+            RULES:
+            1. Account Name MUST be extracted from the top of the Header Text. Do NOT use any UPI names.
+            2. For loans, ONLY use the 'Filtered EMI Lines' provided. Extract the company name and the exact amount from that line.
             
-            --- CRITICAL TRANSACTIONS (FIND EMIs, LOANS, BOUNCES HERE) ---
-            {sniper_text}
-            
-            --- FOOTER & TOTALS (FIND EXACT PRINTED TOTALS & CLOSING BALANCE HERE) ---
-            {footer_text}
-            """
-            
-            # 🚀 THE STRICT PROMPT LOCKDOWN
-            prompt_text = f"""You are an elite Underwriting System. Analyze this pre-processed bank statement data. 
-            
-            STRICT RULES:
-            1. DO NOT CALCULATE TOTALS YOURSELF. Find the explicitly printed "TRANSACTION TOTAL", "Total Credit", or "Total Debit" in the FOOTER section.
-            2. The Account Holder Name is in the HEADER section. DO NOT pick names from UPI transactions. Look for labels like Name, Mr/Mrs, or the first standalone entity name at the very top.
-            3. Output ONLY a RAW, valid JSON object. Do not output markdown.
-            4. If any data is missing, output "N/A" or 0.
-            
-            Extract and return exactly this JSON structure:
+            Return exactly this JSON structure:
             {{
                 "kyc_details": {{
-                    "account_name": "Account holder's name from header",
-                    "bank_name": "Name of the Bank",
-                    "account_number": "Last 4 digits or full if available",
-                    "ifsc_code": "IFSC or Branch name",
-                    "statement_period": "e.g., 01-Jan-2025 to 30-Jun-2025"
+                    "account_name": "...",
+                    "bank_name": "...",
+                    "account_number": "...",
+                    "ifsc_code": "...",
+                    "statement_period": "..."
                 }},
                 "core_financials": {{
-                    "total_credits": "Exact printed credit total (e.g., ₹14,90,096.23)",
-                    "total_debits": "Exact printed debit total (e.g., ₹14,67,207.59)",
-                    "opening_balance": "e.g., ₹0.00",
-                    "closing_balance": "Exact printed closing balance (e.g., ₹22,888.64)",
-                    "average_monthly_balance": "Estimated AMB"
+                    "total_credits": "{parsed_data['total_credits'] if parsed_data['total_credits'] != 'N/A' else '₹... '}",
+                    "total_debits": "{parsed_data['total_debits'] if parsed_data['total_debits'] != 'N/A' else '₹... '}",
+                    "opening_balance": "N/A",
+                    "closing_balance": "N/A",
+                    "average_monthly_balance": "N/A"
                 }},
                 "loans_and_emis": [
-                    {{"company": "e.g., Bajaj Finance", "amount": "e.g., ₹4500", "category": "e.g., Auto Loan", "status": "e.g., Paid / Bounced"}}
+                    {{"company": "...", "amount": "...", "category": "EMI", "status": "Active"}}
                 ],
                 "risk_and_red_flags": {{
-                    "bounced_transactions_count": 0,
-                    "hidden_bank_charges": "Total amount deducted as SMS/Penalty/Maintenance fees",
-                    "risk_level": "Low / Medium / High"
+                    "bounced_transactions_count": {parsed_data['bounces_count']},
+                    "hidden_bank_charges": "N/A",
+                    "risk_level": "Calculate based on bounces"
                 }},
                 "behavioral_insights": {{
-                    "primary_income_source": "e.g., Salary / Business / Cash Deposit",
-                    "salary_consistency": "e.g., Consistent / Irregular / N/A",
-                    "top_spending_categories": ["e.g., E-commerce", "Food", "Cash Withdrawals"]
+                    "primary_income_source": "Estimate from header",
+                    "salary_consistency": "N/A",
+                    "top_spending_categories": ["..."]
                 }},
                 "health_score": {{
                     "score": 85,
                     "out_of": 100,
-                    "verdict": "One line professional verdict on financial health."
+                    "verdict": "Provide a 1 line summary."
                 }}
-            }}
-            
-            Bank Statement Data:
-            {final_payload}"""
+            }}"""
 
-            models_to_try = [
-                "mixtral-8x7b-32768",
-                "llama-3.3-70b-versatile",
-                "llama-3.1-8b-instant"
-            ]
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt_text}],
+                "temperature": 0.0,
+                "response_format": {"type": "json_object"}
+            }
             
             headers = {
                 'Authorization': f'Bearer {GROQ_API_KEY}',
                 'Content-Type': 'application/json'
             }
             
-            success = False
-            for model_name in models_to_try:
-                payload = {
-                    "model": model_name,
-                    "messages": [{"role": "user", "content": prompt_text}],
-                    "temperature": 0.0,
-                    "response_format": {"type": "json_object"}
-                }
-                try:
-                    response = requests.post(url, headers=headers, json=payload)
-                    res_json = response.json()
-                    
-                    if "choices" in res_json:
-                        raw_text = res_json["choices"][0]["message"]["content"].strip()
-                        start_idx = raw_text.find('{')
-                        end_idx = raw_text.rfind('}')
-                        if start_idx != -1 and end_idx != -1:
-                            ai_summary = raw_text[start_idx:end_idx+1]
-                        else:
-                            ai_summary = raw_text
-                        success = True
-                        break
-                except Exception as e:
-                    continue
-            
-            if not success:
-                return {"status": 500, "error": "API Rejected", "message": "API Error"}
+            try:
+                response = requests.post(url, headers=headers, json=payload)
+                res_json = response.json()
+                if "choices" in res_json:
+                    ai_summary = res_json["choices"][0]["message"]["content"].strip()
+            except Exception as e:
+                return {"status": 500, "error": "AI API Failed", "message": str(e)}
 
-        if MONGO_URI and data:
-            collection.insert_one({"filename": file.filename, "extracted_text_length": len(str(data)), "ai_summary": ai_summary})
-            
         return {"status": 200, "message": "Success", "ai_summary": ai_summary}
     
     except Exception as e:
-        return {"status": 500, "error": str(e), "message": "File processing failed."}
+        return {"status": 500, "error": str(e), "message": "System Error"}
