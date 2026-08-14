@@ -3,4 +3,4 @@ uvicorn
 python-multipart
 requests
 pymongo
-pdfplumber
+PyMuPDF
