@@ -1,28 +1,27 @@
-import pdfplumber
+import fitz  # 🚀 PyMuPDF (The Lightweight Engine)
 import re
 
 def extract_transactions(file_path):
     try:
         full_text = ""
-        # 🚀 pdfplumber (layout=True) कॉलम और स्पेस को हिलने नहीं देता!
-        with pdfplumber.open(file_path) as pdf:
-            for page in pdf.pages:
-                extracted = page.extract_text(layout=True)
-                if extracted:
-                    full_text += extracted + "\n"
+        
+        # 🚀 Extremely fast & memory-efficient extraction
+        doc = fitz.open(file_path)
+        for page in doc:
+            full_text += page.get_text("text") + "\n"
+        doc.close()
 
         # 1. 🛡️ EXACT MATH (Zero AI Hallucination)
         total_credits = "N/A"
         total_debits = "N/A"
         
-        # Axis Bank का फिक्स पैटर्न: "TRANSACTION TOTAL   1467207.59   1490096.23"
-        # ये Regex बिना गलती के एग्जैक्ट अमाउंट निकालेगा
+        # Axis Bank Regex: "TRANSACTION TOTAL   1467207.59   1490096.23"
         total_match = re.search(r'TRANSACTION TOTAL\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})', full_text, re.IGNORECASE)
         if total_match:
             total_debits = total_match.group(1)
             total_credits = total_match.group(2)
 
-        # 2. 🛡️ THE KEYWORD SNIPER (Anti-Fake Loan System)
+        # 2. 🛡️ THE KEYWORD SNIPER (Anti-Fake Loan System + Context Grabber)
         lines = full_text.split('\n')
         emi_lines = []
         bounces_count = 0
@@ -31,19 +30,21 @@ def extract_transactions(file_path):
         ignore_keywords = ['upi', 'imps', 'neft', 'rtgs', 'p2a', 'p2m', 'vpa']
         bounce_keywords = ['bounce', 'return', 'reject', 'insufficient', 'chq ret']
 
-        for line in lines:
+        for i, line in enumerate(lines):
             line_lower = line.lower()
             
             # बाउंस गिनो
             if any(b in line_lower for b in bounce_keywords):
                 bounces_count += 1
                 
-            # सिर्फ असली EMI निकालो (UPI/IMPS को इग्नोर करो)
+            # सिर्फ असली EMI निकालो
             if any(l in line_lower for l in loan_keywords):
                 if not any(ign in line_lower for ign in ignore_keywords):
-                    # अगर लाइन में अमाउंट (जैसे 4500.00) है, तभी उसे लो
-                    if re.search(r'[\d,]+\.\d{2}', line):
-                        emi_lines.append(line.strip())
+                    # 🚀 स्मार्ट कैप्चर: अमाउंट अगर अगली लाइन में चला गया हो, तो ऊपर-नीचे की 3 लाइनें लपेट लो
+                    start = max(0, i - 1)
+                    end = min(len(lines), i + 3)
+                    context_block = " | ".join([lines[j].strip() for j in range(start, end) if lines[j].strip()])
+                    emi_lines.append(context_block)
 
         # 3. 🛡️ HEADER EXTRACTION (For exact KYC)
         header_text = full_text[:2500]
@@ -54,7 +55,7 @@ def extract_transactions(file_path):
             "total_credits": total_credits,
             "total_debits": total_debits,
             "bounces_count": bounces_count,
-            "valid_emis": "\n".join(list(set(emi_lines))[:20]) # Duplicate हटाकर सिर्फ असली EMI
+            "valid_emis": "\n".join(list(set(emi_lines))[:15]) # 15 सॉलिड EMI चंक्स
         }
 
     except Exception as e:
